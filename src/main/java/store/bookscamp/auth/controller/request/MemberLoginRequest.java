@@ -8,4 +8,8 @@ public record MemberLoginRequest (
         @NotBlank
         String password
 ){
+        public static MemberLoginDto toDto(MemberLoginRequest request){
+        return new MemberLoginDto(request.username(), request.password());
+    }
 }
+
