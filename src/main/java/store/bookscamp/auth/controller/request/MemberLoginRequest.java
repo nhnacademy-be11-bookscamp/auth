@@ -1,6 +1,7 @@
 package store.bookscamp.auth.controller.request;
 
 import jakarta.validation.constraints.NotBlank;
+import store.bookscamp.auth.service.dto.MemberLoginDto;
 
 public record MemberLoginRequest (
         @NotBlank
