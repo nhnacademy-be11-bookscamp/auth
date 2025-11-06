@@ -1,32 +1,28 @@
 package store.bookscamp.auth.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import store.bookscamp.auth.entity.Member;
 import store.bookscamp.auth.exception.MemberNotFoundException;
-import store.bookscamp.auth.exception.WrongPasswordException;
 import store.bookscamp.auth.repository.MemberCredentialRepository;
-import store.bookscamp.auth.service.dto.MemberLoginDto;
 
 @RequiredArgsConstructor
 @Service
-public class MemberLoginService {
+public class MemberLoginService implements UserDetailsService {
 
     private final MemberCredentialRepository memberCredentialRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    @Transactional(readOnly = true)
-    public MemberLoginDto doLogin(MemberLoginDto memberLoginDto) {
-        Member member = memberCredentialRepository.getByUsername(memberLoginDto.username()).orElseThrow(
+    @Override
+    public UserDetails loadUserByUsername(String username){
+        Member memberData = memberCredentialRepository.getByUsername(username).orElseThrow(
                 () -> new MemberNotFoundException("존재하지 않는 아이디입니다.")
-        );
-
-        if (!passwordEncoder.matches(memberLoginDto.password(), member.getPassword())) {
-            throw new WrongPasswordException("비밀번호가 일치하지 않습니다.");
+                );
+        if(memberData != null){
+            return new CustomMemberDetails(memberData);
         }
-
-        return MemberLoginDto.fromEntity(member);
+        return null;
     }
+
 }
