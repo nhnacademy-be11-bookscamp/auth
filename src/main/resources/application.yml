@@ -18,3 +18,5 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
+  jwt:
+    secret: "저는개인적으로에스파의윈터가짱이라고생각합니다반박시그대말이다맞음"
