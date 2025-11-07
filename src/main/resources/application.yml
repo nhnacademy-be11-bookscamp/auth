@@ -10,10 +10,6 @@ spring:
     redis:
       host: localhost
       port: 6379
-  datasource:
-    url: jdbc:mysql://s4.java21.net:13306/project_be11_team3_dev
-    username: project_be11_team3
-    password: ${PASSWORD}
   servlet:
     multipart:
       max-file-size: 5MB
