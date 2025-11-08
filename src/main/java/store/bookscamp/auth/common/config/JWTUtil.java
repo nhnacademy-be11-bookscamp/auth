@@ -38,7 +38,7 @@ public class JWTUtil {
         Instant expiration = issuedAt.plusMillis(expiredMs);
 
         return Jwts.builder()
-                .claim("memberId", memberId)
+                .claim("id", memberId)
                 .claim("role", role)
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiration))
