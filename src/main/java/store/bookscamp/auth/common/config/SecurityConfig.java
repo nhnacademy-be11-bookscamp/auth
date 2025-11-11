@@ -8,7 +8,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,7 +15,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import store.bookscamp.auth.common.filter.AdminLoginFilter;
-import store.bookscamp.auth.common.filter.JWTFilter;
 import store.bookscamp.auth.common.filter.LoginFilter;
 import store.bookscamp.auth.service.AdminLoginService;
 import store.bookscamp.auth.service.MemberLoginService;
@@ -66,7 +64,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
         );
 
-        http.addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
+
         http.addFilterAt(new AdminLoginFilter(adminAuthManager,jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(adminAuthenticationProvider());
@@ -95,7 +93,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
         );
 
-        http.addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
         http.addFilterAt(new LoginFilter(memberAuthManager,jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(authenticationProvider());
