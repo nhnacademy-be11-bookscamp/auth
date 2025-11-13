@@ -33,6 +33,10 @@ public class CustomAdminDetails implements UserDetails {
         return admin.getPassword();
     }
 
+    public String getName(){
+        return admin.getName();
+    }
+
     public Long getId(){
         return admin.getId();
     }

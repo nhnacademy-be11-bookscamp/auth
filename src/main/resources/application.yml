@@ -6,10 +6,6 @@ spring:
   session:
     redis:
       flush-mode: on_save
-  data:
-    redis:
-      host: localhost
-      port: 6379
   servlet:
     multipart:
       max-file-size: 5MB
