@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import store.bookscamp.auth.common.filter.AdminLoginFilter;
 import store.bookscamp.auth.common.filter.LoginFilter;
+import store.bookscamp.auth.repository.RefreshTokenRepository;
 import store.bookscamp.auth.service.AdminLoginService;
 import store.bookscamp.auth.service.MemberLoginService;
 
@@ -27,6 +28,7 @@ public class SecurityConfig {
     private final AdminLoginService adminLoginService;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtil jwtUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
 
     @Bean
@@ -53,9 +55,7 @@ public class SecurityConfig {
         http.securityMatcher("/admin/**");
 
         AuthenticationManager adminAuthManager = new ProviderManager(adminAuthenticationProvider());
-
         http.authenticationManager(adminAuthManager);
-
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.authorizeHttpRequests(authorizeRequests ->
@@ -64,14 +64,11 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
         );
 
-
-        http.addFilterAt(new AdminLoginFilter(adminAuthManager,jwtUtil), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAt(new AdminLoginFilter(adminAuthManager, jwtUtil, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(adminAuthenticationProvider());
-
         http.formLogin(AbstractHttpConfigurer::disable);
         http.httpBasic(AbstractHttpConfigurer::disable);
-
         http.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
@@ -82,9 +79,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         AuthenticationManager memberAuthManager = new ProviderManager(authenticationProvider());
-
         http.authenticationManager(memberAuthManager);
-
         http.csrf(AbstractHttpConfigurer::disable);
 
         http.authorizeHttpRequests(authorizeRequests ->
@@ -93,16 +88,13 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
         );
 
-        http.addFilterAt(new LoginFilter(memberAuthManager,jwtUtil), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAt(new LoginFilter(memberAuthManager, jwtUtil, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(authenticationProvider());
-
         http.formLogin(AbstractHttpConfigurer::disable);
         http.httpBasic(AbstractHttpConfigurer::disable);
-
         http.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
-
 }
