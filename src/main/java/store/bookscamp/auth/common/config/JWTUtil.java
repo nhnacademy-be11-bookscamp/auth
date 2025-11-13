@@ -50,7 +50,7 @@ public class JWTUtil {
 
         return Jwts.builder()
                 .claim("category", category)
-                .claim("memberId", memberId)
+                .claim("id", memberId)
                 .claim("role", role)
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiration))
