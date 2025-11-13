@@ -6,7 +6,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -62,19 +64,26 @@ public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
+        String name = customAdminDetails.getName();
 
         String accessToken = jwtUtil.createAccessToken(memberId, role);
         String refreshToken = jwtUtil.createRefreshToken(memberId, role);
 
         refreshTokenRepository.save(memberId.toString(), refreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
 
+        Map<String, String> responseBody = new HashMap<>();
+        responseBody.put("accessToken", accessToken);
+        responseBody.put("name", name);
+
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        String jsonResponse = "{\"accessToken\": \"" + accessToken + "\"}";
-        response.getWriter().write(jsonResponse);
+
 
         response.addHeader("Set-Cookie", createCookie(refreshToken));
         response.setStatus(HttpServletResponse.SC_OK);
+
+        objectMapper.writeValue(response.getWriter(), responseBody);
+
     }
 
     @Override
