@@ -10,3 +10,7 @@ spring:
     name: auth-server
   jwt:
     secret: "저는개인적으로에스파의윈터가짱이라고생각합니다반박시그대말이다맞음"
+  data:
+    redis:
+      host: localhost # 또는 테스트용 Redis 호스트 주소
+      port: 6379
