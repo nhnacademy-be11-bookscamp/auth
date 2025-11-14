@@ -68,7 +68,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String accessToken = jwtUtil.createAccessToken(memberId, role);
         String refreshToken = jwtUtil.createRefreshToken(memberId, role);
 
-        refreshTokenRepository.save(memberId.toString(), refreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
+        String userKey = role + ":" + memberId;
+        refreshTokenRepository.save(userKey, refreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
 
         Map<String, String> responseBody = new HashMap<>();
         responseBody.put("accessToken", accessToken);
@@ -78,7 +79,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        response.addHeader("Set-Cookie", createCookie(refreshToken));
+        response.addHeader("Set-Cookie", createCookie(refreshToken,request));
         response.setStatus(HttpServletResponse.SC_OK);
 
         objectMapper.writeValue(response.getWriter(), responseBody);
@@ -92,10 +93,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.getWriter().write("LoginFailed");
     }
 
-    private String createCookie(String refreshToken) {
+    private String createCookie(String refreshToken, HttpServletRequest request) {
+
+        boolean isSecure = request.isSecure();
+        if (request.getHeader("x-forwarded-proto") != null) {
+            isSecure = request.getHeader("x-forwarded-proto").equals("https");
+        }
+
         long maxAge = JWTUtil.REFRESH_TOKEN_EXPIRATION_MS / 1000;
 
-        return String.format("refresh_token=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Strict",
-                refreshToken, maxAge);
+        String sameSitePolicy = isSecure ? "None" : "Lax";
+        String secureFlag = isSecure ? " Secure;" : "";
+
+        return String.format(
+                "refresh_token=%s; Path=/; Max-Age=%d; HttpOnly;%s SameSite=%s",
+                refreshToken, maxAge, secureFlag, sameSitePolicy
+        );
     }
 }
