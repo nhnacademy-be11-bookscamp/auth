@@ -33,6 +33,8 @@ public class CustomMemberDetails implements UserDetails {
         return member.getPassword();
     }
 
+    public String getName() {return member.getName();}
+
     public Long getId(){
         return member.getId();
     }
