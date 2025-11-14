@@ -20,5 +20,5 @@ spring:
     redis:
       host: s4.java21.net
       port: 6379
-      password: ${REDIS_PASSWORD}
-      database: 332
+      password: '*N2vya7H@muDTwdNMR!'
+      database: 331
