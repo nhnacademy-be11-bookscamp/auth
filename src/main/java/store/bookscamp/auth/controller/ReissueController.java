@@ -106,12 +106,20 @@ public class ReissueController {
             @CookieValue(name = "refresh_token", required = false) String refreshToken) {
         if (refreshToken != null) {
             try {
-                Long memberId = jwtUtil.getMemberId(refreshToken);
-                String role = jwtUtil.getRole(refreshToken);
-                String userKey = role + ":" + memberId;
+                Long memberId = jwtUtil.getMemberIdFromExpiredToken(refreshToken);
+                String role = jwtUtil.getRoleFromExpiredToken(refreshToken);
 
+                if (memberId == null || role == null) {
+                    log.warn("Invalid refresh token received during logout.");
+                    return ResponseEntity.badRequest().build();
+                }
+
+                String userKey = role + ":" + memberId;
                 refreshTokenRepository.deleteByMemberId(userKey);
+
             } catch (Exception e) {
+                log.error("Error processing logout. Token might be malformed.", e);
+                return ResponseEntity.internalServerError().build();
             }
         }
         return ResponseEntity.ok().build();
