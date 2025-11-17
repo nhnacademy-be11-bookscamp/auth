@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,6 +21,7 @@ import store.bookscamp.auth.repository.RefreshTokenRepository;
 import store.bookscamp.auth.controller.request.MemberLoginRequest;
 import store.bookscamp.auth.service.CustomMemberDetails;
 
+@Slf4j
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
@@ -65,10 +67,29 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String role = auth.getAuthority();
         String name = customUserDetails.getName();
 
+        String userKey = role + ":" + memberId;
+
+        String existingToken = refreshTokenRepository.findByMemberId(userKey);
+        if (existingToken != null) {
+
+            log.warn("Concurrent login attempt blocked for userKey: {}", userKey);
+
+            response.setStatus(HttpServletResponse.SC_CONFLICT); // 409 Conflict
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            Map<String, String> errorBody = new HashMap<>();
+            errorBody.put("error", "ALREADY_LOGGED_IN");
+            errorBody.put("message", "This account is already logged in from another device.");
+
+            objectMapper.writeValue(response.getWriter(), errorBody);
+            return;
+        }
+
         String accessToken = jwtUtil.createAccessToken(memberId, role);
         String refreshToken = jwtUtil.createRefreshToken(memberId, role);
 
-        refreshTokenRepository.save(memberId.toString(), refreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
+        refreshTokenRepository.save(userKey, refreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
 
         Map<String, String> responseBody = new HashMap<>();
         responseBody.put("accessToken", accessToken);
@@ -78,7 +99,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
-        response.addHeader("Set-Cookie", createCookie(refreshToken));
+        response.addHeader("Set-Cookie", createCookie(refreshToken,request));
         response.setStatus(HttpServletResponse.SC_OK);
 
         objectMapper.writeValue(response.getWriter(), responseBody);
@@ -92,10 +113,21 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.getWriter().write("LoginFailed");
     }
 
-    private String createCookie(String refreshToken) {
+    private String createCookie(String refreshToken, HttpServletRequest request) {
+
+        boolean isSecure = request.isSecure();
+        if (request.getHeader("x-forwarded-proto") != null) {
+            isSecure = request.getHeader("x-forwarded-proto").equals("https");
+        }
+
         long maxAge = JWTUtil.REFRESH_TOKEN_EXPIRATION_MS / 1000;
 
-        return String.format("refresh_token=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Strict",
-                refreshToken, maxAge);
+        String sameSitePolicy = isSecure ? "None" : "Lax";
+        String secureFlag = isSecure ? " Secure;" : "";
+
+        return String.format(
+                "refresh_token=%s; Path=/; Max-Age=%d; HttpOnly;%s SameSite=%s",
+                refreshToken, maxAge, secureFlag, sameSitePolicy
+        );
     }
 }

@@ -2,6 +2,7 @@ package store.bookscamp.auth.controller;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ public class ReissueController {
     @PostMapping("/reissue")
     public ResponseEntity<?> reissue(
             @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletRequest request,
             HttpServletResponse response) {
 
         if (refreshToken == null) {
@@ -43,26 +45,28 @@ public class ReissueController {
             }
 
             Long memberId = jwtUtil.getMemberId(refreshToken);
-            String tokenInRedis = refreshTokenRepository.findByMemberId(memberId.toString());
+            String role = jwtUtil.getRole(refreshToken);
+            String userKey = role + ":" + memberId;
+
+            String tokenInRedis = refreshTokenRepository.findByMemberId(userKey);
 
             if (tokenInRedis == null) {
-                log.warn("Refresh token not found in Redis (user logged out).");
+                log.warn("Refresh token not found in Redis (user logged out). Key: {}", userKey);
                 return new ResponseEntity<>("Refresh token not found", HttpStatus.UNAUTHORIZED);
             }
             if (!tokenInRedis.equals(refreshToken)) {
-                log.warn("Refresh token mismatch (possible token theft).");
+                log.warn("Refresh token mismatch (possible token theft). Key: {}", userKey);
 
-                refreshTokenRepository.deleteByMemberId(memberId.toString());
+                refreshTokenRepository.deleteByMemberId(userKey);
                 return new ResponseEntity<>("Refresh token mismatch", HttpStatus.UNAUTHORIZED);
             }
 
-            String role = jwtUtil.getRole(refreshToken);
             String newAccessToken = jwtUtil.createAccessToken(memberId, role);
             String newRefreshToken = jwtUtil.createRefreshToken(memberId, role);
 
-            refreshTokenRepository.save(memberId.toString(), newRefreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
+            refreshTokenRepository.save(userKey, newRefreshToken, JWTUtil.REFRESH_TOKEN_EXPIRATION_MS);
 
-            response.addHeader("Set-Cookie", createCookie(newRefreshToken));
+            response.addHeader("Set-Cookie", createCookie(newRefreshToken, request));
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
             String jsonResponse = "{\"accessToken\": \"" + newAccessToken + "\"}";
@@ -79,10 +83,22 @@ public class ReissueController {
     }
 
 
-    private String createCookie(String refreshToken) {
+
+    private String createCookie(String refreshToken, HttpServletRequest request) {
+        boolean isSecure = request.isSecure();
+        if (request.getHeader("x-forwarded-proto") != null) {
+            isSecure = request.getHeader("x-forwarded-proto").equals("https");
+        }
+
         long maxAge = JWTUtil.REFRESH_TOKEN_EXPIRATION_MS / 1000;
-        return String.format("refresh_token=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Strict",
-                refreshToken, maxAge);
+
+        String sameSitePolicy = isSecure ? "None" : "Lax";
+        String secureFlag = isSecure ? " Secure;" : "";
+
+        return String.format(
+                "refresh_token=%s; Path=/; Max-Age=%d; HttpOnly;%s SameSite=%s",
+                refreshToken, maxAge, secureFlag, sameSitePolicy
+        );
     }
 
     @PostMapping("/logout")
@@ -90,9 +106,20 @@ public class ReissueController {
             @CookieValue(name = "refresh_token", required = false) String refreshToken) {
         if (refreshToken != null) {
             try {
-                Long memberId = jwtUtil.getMemberId(refreshToken);
-                refreshTokenRepository.deleteByMemberId(memberId.toString());
+                Long memberId = jwtUtil.getMemberIdFromExpiredToken(refreshToken);
+                String role = jwtUtil.getRoleFromExpiredToken(refreshToken);
+
+                if (memberId == null || role == null) {
+                    log.warn("Invalid refresh token received during logout.");
+                    return ResponseEntity.badRequest().build();
+                }
+
+                String userKey = role + ":" + memberId;
+                refreshTokenRepository.deleteByMemberId(userKey);
+
             } catch (Exception e) {
+                log.error("Error processing logout. Token might be malformed.", e);
+                return ResponseEntity.internalServerError().build();
             }
         }
         return ResponseEntity.ok().build();

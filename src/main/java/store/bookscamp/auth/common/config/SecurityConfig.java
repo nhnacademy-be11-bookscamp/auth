@@ -95,6 +95,7 @@ public class SecurityConfig {
         http.httpBasic(AbstractHttpConfigurer::disable);
         http.sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
+        http.logout(AbstractHttpConfigurer::disable);
         return http.build();
     }
 }
