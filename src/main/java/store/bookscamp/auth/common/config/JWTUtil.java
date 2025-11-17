@@ -1,5 +1,6 @@
 package store.bookscamp.auth.common.config;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -56,5 +57,21 @@ public class JWTUtil {
                 .expiration(Date.from(expiration))
                 .signWith(secretKey)
                 .compact();
+    }
+
+    public Long getMemberIdFromExpiredToken(String token) {
+        try {
+            return getMemberId(token); //
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().get("id", Long.class); //
+        }
+    }
+
+    public String getRoleFromExpiredToken(String token) {
+        try {
+            return getRole(token); //
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().get("role", String.class); //
+        }
     }
 }
