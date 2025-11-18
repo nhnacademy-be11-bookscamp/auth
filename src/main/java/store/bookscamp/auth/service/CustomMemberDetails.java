@@ -39,6 +39,10 @@ public class CustomMemberDetails implements UserDetails {
         return member.getId();
     }
 
+    public Member getMember(){
+        return this.member;
+    }
+
     @Override
     public String getUsername() {
 
