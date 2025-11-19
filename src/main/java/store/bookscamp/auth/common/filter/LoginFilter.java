@@ -17,6 +17,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import store.bookscamp.auth.common.config.JWTUtil;
+import store.bookscamp.auth.entity.Member;
+import store.bookscamp.auth.repository.MemberCredentialRepository;
 import store.bookscamp.auth.repository.RefreshTokenRepository;
 import store.bookscamp.auth.controller.request.MemberLoginRequest;
 import store.bookscamp.auth.service.CustomMemberDetails;
@@ -27,12 +29,14 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final MemberCredentialRepository memberCredentialRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository, MemberCredentialRepository memberCredentialRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.memberCredentialRepository = memberCredentialRepository;
         setFilterProcessesUrl("/login");
     }
 
@@ -60,12 +64,17 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         CustomMemberDetails customUserDetails = (CustomMemberDetails) authentication.getPrincipal();
 
-        Long memberId = customUserDetails.getId();
+        Member member = customUserDetails.getMember();
+        member.updateLastLoginAt();
+        memberCredentialRepository.save(member);
+
+        Long memberId = member.getId();
+        String name = member.getName();
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
-        String name = customUserDetails.getName();
+
 
         String userKey = role + ":" + memberId;
 
