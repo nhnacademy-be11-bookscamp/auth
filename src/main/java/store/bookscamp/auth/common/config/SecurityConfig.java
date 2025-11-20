@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import store.bookscamp.auth.common.filter.AdminLoginFilter;
 import store.bookscamp.auth.common.filter.LoginFilter;
+import store.bookscamp.auth.repository.MemberCredentialRepository;
 import store.bookscamp.auth.repository.RefreshTokenRepository;
 import store.bookscamp.auth.service.AdminLoginService;
 import store.bookscamp.auth.service.MemberLoginService;
@@ -76,7 +77,8 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   MemberCredentialRepository memberCredentialRepository) throws Exception {
 
         AuthenticationManager memberAuthManager = new ProviderManager(authenticationProvider());
         http.authenticationManager(memberAuthManager);
@@ -88,7 +90,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
         );
 
-        http.addFilterAt(new LoginFilter(memberAuthManager, jwtUtil, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAt(new LoginFilter(memberAuthManager, jwtUtil, refreshTokenRepository,memberCredentialRepository), UsernamePasswordAuthenticationFilter.class);
 
         http.authenticationProvider(authenticationProvider());
         http.formLogin(AbstractHttpConfigurer::disable);

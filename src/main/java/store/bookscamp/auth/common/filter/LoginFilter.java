@@ -11,12 +11,15 @@ import java.util.Iterator;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import store.bookscamp.auth.common.config.JWTUtil;
+import store.bookscamp.auth.entity.Member;
+import store.bookscamp.auth.repository.MemberCredentialRepository;
 import store.bookscamp.auth.repository.RefreshTokenRepository;
 import store.bookscamp.auth.controller.request.MemberLoginRequest;
 import store.bookscamp.auth.service.CustomMemberDetails;
@@ -27,12 +30,14 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final MemberCredentialRepository memberCredentialRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository, MemberCredentialRepository memberCredentialRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.memberCredentialRepository = memberCredentialRepository;
         setFilterProcessesUrl("/login");
     }
 
@@ -60,12 +65,17 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         CustomMemberDetails customUserDetails = (CustomMemberDetails) authentication.getPrincipal();
 
-        Long memberId = customUserDetails.getId();
+        Member member = customUserDetails.getMember();
+        member.updateLastLoginAt();
+
+
+        Long memberId = member.getId();
+        String name = member.getName();
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority auth = iterator.next();
         String role = auth.getAuthority();
-        String name = customUserDetails.getName();
+
 
         String userKey = role + ":" + memberId;
 
@@ -85,6 +95,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             objectMapper.writeValue(response.getWriter(), errorBody);
             return;
         }
+        memberCredentialRepository.save(member);
 
         String accessToken = jwtUtil.createAccessToken(memberId, role);
         String refreshToken = jwtUtil.createRefreshToken(memberId, role);
@@ -109,8 +120,29 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed)
             throws IOException {
+
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        if (failed instanceof DisabledException) {
+
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setHeader("X-AUTH-ERROR-CODE", "DORMANT_MEMBER"); // <--- 이 헤더를 추가합니다.
+
+            response.setContentType("text/plain");
+            response.getWriter().write("Auth Error: DORMANT_MEMBER");
+            response.getWriter().flush();
+            return;
+        }
+
+        Map<String, String> errorBody = Map.of(
+                "status", "401",
+                "code", "LOGIN_FAILED",
+                "message", "아이디 또는 비밀번호가 올바르지 않습니다."
+        );
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("LoginFailed");
+        objectMapper.writeValue(response.getWriter(), errorBody);
+        response.getWriter().flush();
     }
 
     private String createCookie(String refreshToken, HttpServletRequest request) {

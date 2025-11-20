@@ -65,4 +65,12 @@ public class Member  {
         this.username = username;
         this.password = password;
     }
+
+    public void updateLastLoginAt(){
+        this.lastLoginAt = LocalDateTime.now();
+    }
+
+    public void setStatusUpdateDate(MemberStatus status){
+        this.status =status;
+    }
 }

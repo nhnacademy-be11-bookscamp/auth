@@ -5,6 +5,7 @@ import java.util.Collection;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import store.bookscamp.auth.entity.Member;
+import store.bookscamp.auth.entity.MemberStatus;
 
 
 public class CustomMemberDetails implements UserDetails {
@@ -39,6 +40,10 @@ public class CustomMemberDetails implements UserDetails {
         return member.getId();
     }
 
+    public Member getMember(){
+        return this.member;
+    }
+
     @Override
     public String getUsername() {
 
@@ -66,6 +71,6 @@ public class CustomMemberDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
 
-        return true;
+        return !member.getStatus().equals(MemberStatus.DORMANT);
     }
 }
