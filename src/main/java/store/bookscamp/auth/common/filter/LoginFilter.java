@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -66,7 +67,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
         Member member = customUserDetails.getMember();
         member.updateLastLoginAt();
-        memberCredentialRepository.save(member);
+
 
         Long memberId = member.getId();
         String name = member.getName();
@@ -94,6 +95,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             objectMapper.writeValue(response.getWriter(), errorBody);
             return;
         }
+        memberCredentialRepository.save(member);
 
         String accessToken = jwtUtil.createAccessToken(memberId, role);
         String refreshToken = jwtUtil.createRefreshToken(memberId, role);
@@ -118,8 +120,29 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed)
             throws IOException {
+
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        if (failed instanceof DisabledException) {
+
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setHeader("X-AUTH-ERROR-CODE", "DORMANT_MEMBER"); // <--- 이 헤더를 추가합니다.
+
+            response.setContentType("text/plain");
+            response.getWriter().write("Auth Error: DORMANT_MEMBER");
+            response.getWriter().flush();
+            return;
+        }
+
+        Map<String, String> errorBody = Map.of(
+                "status", "401",
+                "code", "LOGIN_FAILED",
+                "message", "아이디 또는 비밀번호가 올바르지 않습니다."
+        );
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("LoginFailed");
+        objectMapper.writeValue(response.getWriter(), errorBody);
+        response.getWriter().flush();
     }
 
     private String createCookie(String refreshToken, HttpServletRequest request) {

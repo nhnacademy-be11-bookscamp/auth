@@ -69,4 +69,8 @@ public class Member  {
     public void updateLastLoginAt(){
         this.lastLoginAt = LocalDateTime.now();
     }
+
+    public void setStatusUpdateDate(MemberStatus status){
+        this.status =status;
+    }
 }
