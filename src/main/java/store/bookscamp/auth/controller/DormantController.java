@@ -42,16 +42,8 @@ public class DormantController {
         String redisKey = REDIS_KEY_PREFIX + username;
 
         try {
-            // 1. Redis 저장
             redisTemplate.opsForValue().set(redisKey, randomNumber, AUTH_CODE_TTL);
             messengerSendService.send(randomNumber);
-            log.info("메신저 발송 완료"); // 로그 3
-
-            // 3. 성공 응답 생성
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "인증번호가 성공적으로 발송되었습니다.");
-
-            return ResponseEntity.ok(response);
 
             log.info("2. 로직 완료, 응답 생성 시작");
 
