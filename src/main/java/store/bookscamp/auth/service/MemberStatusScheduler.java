@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import store.bookscamp.auth.entity.MemberStatus; // MemberStatus enum import
+import store.bookscamp.auth.entity.MemberStatus;
 import store.bookscamp.auth.repository.MemberCredentialRepository;
 
 @Slf4j
