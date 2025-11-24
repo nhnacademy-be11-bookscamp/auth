@@ -4,8 +4,10 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // 로그 사용을 위해 추가
-import org.springframework.data.redis.core.StringRedisTemplate; // 변경됨
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import store.bookscamp.auth.service.MemberLoginService;
 import store.bookscamp.auth.service.MessengerSendService;
 
-@Slf4j // 롬복 로그 어노테이션 추가
+@Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/dormant")
 @RestController
@@ -22,8 +24,6 @@ public class DormantController {
 
     private final MemberLoginService memberLoginService;
     private final MessengerSendService messengerSendService;
-
-    // [수정 1] RedisTemplate<String, String> -> StringRedisTemplate 으로 변경 (안전성 확보)
     private final StringRedisTemplate redisTemplate;
 
     private static final Duration AUTH_CODE_TTL = Duration.ofSeconds(300);
@@ -32,7 +32,7 @@ public class DormantController {
     @PostMapping("/send")
     public ResponseEntity<Map<String, Object>> sendDormantCode(@RequestBody Map<String, String> request) {
         String username = request.get("username");
-        log.info("휴면 해제 요청 받음: {}", username); // 로그 1
+        log.info("1. 요청 진입: {}", username);
 
         if (username == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "사용자 이름이 필요합니다."));
@@ -42,31 +42,30 @@ public class DormantController {
         String redisKey = REDIS_KEY_PREFIX + username;
 
         try {
-            // 1. Redis 저장
             redisTemplate.opsForValue().set(redisKey, randomNumber, AUTH_CODE_TTL);
-            log.info("Redis 저장 완료: {}", redisKey); // 로그 2
-
-            // 2. 메신저 발송
             messengerSendService.send(randomNumber);
-            log.info("메신저 발송 완료"); // 로그 3
 
-            // 3. 성공 응답 생성
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "인증번호가 성공적으로 발송되었습니다.");
+            log.info("2. 로직 완료, 응답 생성 시작");
 
-            return ResponseEntity.ok(response);
+            Map<String, Object> responseMap = new HashMap<>();
+            responseMap.put("message", "인증번호가 발송되었습니다.");
+            responseMap.put("status", "success");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            log.info("3. 응답 리턴 직전");
+            return new ResponseEntity<>(responseMap, headers, org.springframework.http.HttpStatus.OK);
 
         } catch (Exception e) {
-            // [중요] 에러 발생 시 서버 로그에 빨간색으로 출력하여 원인 파악
-            log.error("휴면 해제 프로세스 중 오류 발생", e);
-
-            return ResponseEntity.status(500).body(Map.of("message", "서버 내부 오류: " + e.getMessage()));
+            log.error("에러 발생", e);
+            return ResponseEntity.status(500).body(Map.of("message", "서버 에러: " + e.getMessage()));
         }
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<Map<String, String>> verifyDormantCode(@RequestBody Map<String, String> request) {
-        // (검증 로직은 기존과 동일하되, StringRedisTemplate 메서드만 사용하면 됩니다)
+    public ResponseEntity<Map<String, Object>> verifyDormantCode(@RequestBody Map<String, String> request) {
+        
         String username = request.get("username");
         String code = request.get("code");
 
@@ -88,6 +87,12 @@ public class DormantController {
         memberLoginService.activateDormantMember(username);
         redisTemplate.delete(redisKey);
 
-        return ResponseEntity.ok(Map.of("message", "휴면 해제 성공"));
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("message", "휴면 해제 성공");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        return new ResponseEntity<>(responseMap, headers, org.springframework.http.HttpStatus.OK);
     }
 }
