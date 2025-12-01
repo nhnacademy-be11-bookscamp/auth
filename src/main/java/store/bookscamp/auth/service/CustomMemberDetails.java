@@ -2,6 +2,7 @@ package store.bookscamp.auth.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import store.bookscamp.auth.entity.Member;
@@ -17,16 +18,8 @@ public class CustomMemberDetails implements UserDetails {
     }
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities(){
-        Collection<GrantedAuthority> collection = new ArrayList<>();
-
-        collection.add(new GrantedAuthority() {
-            @Override
-            public String getAuthority() {
-                return "USER";
-            }
-        });
-        return collection;
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(() -> "USER");
     }
     @Override
     public String getPassword() {

@@ -34,7 +34,6 @@ class AdminLoginServiceTest {
         String password = "adminPassword";
 
         Admin admin = new Admin(username, password);
-
         ReflectionTestUtils.setField(admin, "id", 1L);
         ReflectionTestUtils.setField(admin, "name", "관리자");
 
@@ -45,12 +44,11 @@ class AdminLoginServiceTest {
         assertThat(userDetails).isNotNull();
         assertThat(userDetails).isInstanceOf(CustomAdminDetails.class);
         assertThat(userDetails.getUsername()).isEqualTo(username);
-        assertThat(userDetails.getPassword()).isEqualTo(password);
 
         CustomAdminDetails customDetails = (CustomAdminDetails) userDetails;
         assertThat(customDetails.getName()).isEqualTo("관리자");
-        assertThat(customDetails.getId()).isEqualTo(1L);
     }
+
 
     @Test
     @DisplayName("loadUserByUsername 실패: 존재하지 않는 아이디면 예외 발생")

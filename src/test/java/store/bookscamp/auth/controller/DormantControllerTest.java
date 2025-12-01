@@ -8,7 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser; // Security 설정 무시용
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import store.bookscamp.auth.service.MemberLoginService;
@@ -35,7 +35,7 @@ class DormantControllerTest {
     @MockitoBean MemberLoginService memberLoginService;
     @MockitoBean MessengerSendService messengerSendService;
     @MockitoBean StringRedisTemplate redisTemplate;
-    @MockitoBean ValueOperations<String, String> valueOperations; // Redis 오퍼레이션 Mock
+    @MockitoBean ValueOperations<String, String> valueOperations;
 
     @Test
     @DisplayName("인증번호 발송 성공")

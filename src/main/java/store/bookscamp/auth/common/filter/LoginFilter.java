@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,6 +27,9 @@ import store.bookscamp.auth.service.CustomMemberDetails;
 
 @Slf4j
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
+
+    private static final String CONTENT_TYPE_JSON = "application/json";
+    private static final String ENCODING_UTF8 = "UTF-8";
 
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
@@ -44,7 +48,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
-        if (request.getContentType() != null && request.getContentType().contains("application/json")) {
+        if (request.getContentType() != null && request.getContentType().contains(CONTENT_TYPE_JSON)) {
             try {
                 MemberLoginRequest loginRequest = objectMapper.readValue(request.getInputStream(), MemberLoginRequest.class);
                 String username = loginRequest.username();
@@ -53,7 +57,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
                         new UsernamePasswordAuthenticationToken(username, password, null);
                 return authenticationManager.authenticate(authToken);
             } catch (IOException e) {
-                throw new RuntimeException("JSON body parsing failed for login request", e);
+                throw new AuthenticationServiceException("JSON body parsing failed for login request", e);
             }
         }
         return super.attemptAuthentication(request, response);
@@ -84,9 +88,9 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
             log.warn("Concurrent login attempt blocked for userKey: {}", userKey);
 
-            response.setStatus(HttpServletResponse.SC_CONFLICT); // 409 Conflict
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+            response.setStatus(HttpServletResponse.SC_CONFLICT);
+            response.setContentType(CONTENT_TYPE_JSON);
+            response.setCharacterEncoding(ENCODING_UTF8);
 
             Map<String, String> errorBody = new HashMap<>();
             errorBody.put("error", "ALREADY_LOGGED_IN");
@@ -107,8 +111,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         responseBody.put("name", name);
 
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+        response.setContentType(CONTENT_TYPE_JSON);
+        response.setCharacterEncoding(ENCODING_UTF8);
 
         response.addHeader("Set-Cookie", createCookie(refreshToken,request));
         response.setStatus(HttpServletResponse.SC_OK);
@@ -121,13 +125,13 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed)
             throws IOException {
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+        response.setContentType(CONTENT_TYPE_JSON);
+        response.setCharacterEncoding(ENCODING_UTF8);
 
         if (failed instanceof DisabledException) {
 
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setHeader("X-AUTH-ERROR-CODE", "DORMANT_MEMBER"); // <--- 이 헤더를 추가합니다.
+            response.setHeader("X-AUTH-ERROR-CODE", "DORMANT_MEMBER");
 
             response.setContentType("text/plain");
             response.getWriter().write("Auth Error: DORMANT_MEMBER");

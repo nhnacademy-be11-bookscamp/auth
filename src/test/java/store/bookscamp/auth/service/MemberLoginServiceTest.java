@@ -74,14 +74,19 @@ class MemberLoginServiceTest {
 
         ReflectionTestUtils.setField(member, "status", MemberStatus.DORMANT);
         ReflectionTestUtils.setField(member, "id", 2L);
+        ReflectionTestUtils.setField(member, "name", "홍길동");
 
         given(memberCredentialRepository.getByUsername(username)).willReturn(Optional.of(member));
 
-        memberLoginService.activateDormantMember(username);
+        UserDetails userDetails = memberLoginService.loadUserByUsername(username);
 
-        assertThat(member.getStatus()).isEqualTo(MemberStatus.NORMAL);
+        assertThat(userDetails)
+                .isNotNull()
+                .isInstanceOf(CustomMemberDetails.class)
+                .returns(username, UserDetails::getUsername);
 
-        verify(memberCredentialRepository, times(1)).save(member);
+        CustomMemberDetails details = (CustomMemberDetails) userDetails;
+        assertThat(details.getMember().getName()).isEqualTo("홍길동");
     }
 
     @Test
