@@ -14,7 +14,7 @@ import java.util.Date;
 public class JWTUtil {
 
     public static final Long ACCESS_TOKEN_EXPIRATION_MS = 1000 * 60 * 30L;
-    public static final Long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 24 * 7L;
+    public static final Long REFRESH_TOKEN_EXPIRATION_MS = 1000 * 60 * 60 * 6L;
     private SecretKey secretKey;
 
     public JWTUtil(@Value("${spring.jwt.secret}") String secret) {
@@ -32,7 +32,7 @@ public class JWTUtil {
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("category", String.class);
     }
 
-    public Boolean isExpired(String token) {
+    public boolean isExpired(String token) {
         Instant expirationInstant = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().toInstant();
         return expirationInstant.isBefore(Instant.now());
     }
@@ -61,17 +61,17 @@ public class JWTUtil {
 
     public Long getMemberIdFromExpiredToken(String token) {
         try {
-            return getMemberId(token); //
+            return getMemberId(token);
         } catch (ExpiredJwtException e) {
-            return e.getClaims().get("id", Long.class); //
+            return e.getClaims().get("id", Long.class);
         }
     }
 
     public String getRoleFromExpiredToken(String token) {
         try {
-            return getRole(token); //
+            return getRole(token);
         } catch (ExpiredJwtException e) {
-            return e.getClaims().get("role", String.class); //
+            return e.getClaims().get("role", String.class);
         }
     }
 }

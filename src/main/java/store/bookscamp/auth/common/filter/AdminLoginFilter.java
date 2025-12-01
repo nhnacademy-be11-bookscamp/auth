@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -23,6 +24,8 @@ import store.bookscamp.auth.service.CustomAdminDetails;
 
 @Slf4j
 public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
+    private static final String CONTENT_TYPE_JSON = "application/json";
+    private static final String ENCODING_UTF8 = "UTF-8";
 
     private final AuthenticationManager authenticationManager;
     private final JWTUtil jwtUtil;
@@ -39,7 +42,7 @@ public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
-        if (request.getContentType() != null && request.getContentType().contains("application/json")) {
+        if (request.getContentType() != null && request.getContentType().contains(CONTENT_TYPE_JSON)) {
             try {
                 AdminLoginRequest loginRequest = objectMapper.readValue(request.getInputStream(), AdminLoginRequest.class);
                 String username = loginRequest.username();
@@ -48,7 +51,7 @@ public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
                         new UsernamePasswordAuthenticationToken(username, password, null);
                 return authenticationManager.authenticate(authToken);
             } catch (IOException e) {
-                throw new RuntimeException("JSON body parsing failed for login request", e);
+                throw new AuthenticationServiceException("JSON body parsing failed for login request", e);
             }
         }
         return super.attemptAuthentication(request, response);
@@ -59,7 +62,7 @@ public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication)
             throws IOException {
 
-        CustomAdminDetails customAdminDetails = (CustomAdminDetails) authentication.getPrincipal(); // ★ Admin용 Details
+        CustomAdminDetails customAdminDetails = (CustomAdminDetails) authentication.getPrincipal();
 
         Long memberId = customAdminDetails.getId();
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
@@ -73,19 +76,19 @@ public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
 
         String existingToken = refreshTokenRepository.findByMemberId(userKey);
         if (existingToken != null) {
-            //
+
             log.warn("Concurrent login attempt blocked for userKey: {}", userKey);
 
-            response.setStatus(HttpServletResponse.SC_CONFLICT); // 409 Conflict
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+            response.setStatus(HttpServletResponse.SC_CONFLICT);
+            response.setContentType(CONTENT_TYPE_JSON);
+            response.setCharacterEncoding(ENCODING_UTF8);
 
             Map<String, String> errorBody = new HashMap<>();
             errorBody.put("error", "ALREADY_LOGGED_IN");
             errorBody.put("message", "This account is already logged in from another device.");
 
             objectMapper.writeValue(response.getWriter(), errorBody);
-            return; //
+            return;
         }
 
         String accessToken = jwtUtil.createAccessToken(memberId, role);
@@ -97,8 +100,8 @@ public class AdminLoginFilter extends UsernamePasswordAuthenticationFilter {
         responseBody.put("accessToken", accessToken);
         responseBody.put("name", name);
 
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+        response.setContentType(CONTENT_TYPE_JSON);
+        response.setCharacterEncoding(ENCODING_UTF8);
 
 
         response.addHeader("Set-Cookie", createCookie(refreshToken, request));

@@ -90,7 +90,8 @@ class LoginFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_CONFLICT);
         Map<String, String> responseBody = objectMapper.readValue(response.getContentAsString(), Map.class);
-        assertThat(responseBody.get("error")).isEqualTo("ALREADY_LOGGED_IN");
+        assertThat(responseBody).containsEntry("error", "ALREADY_LOGGED_IN");
+        assertThat(responseBody).containsEntry("message", "This account is already logged in from another device.");
 
         verify(refreshTokenRepository, never()).save(any(), any(), anyLong());    }
 
@@ -119,7 +120,8 @@ class LoginFilterTest {
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
 
         Map<String, String> responseBody = objectMapper.readValue(response.getContentAsString(), Map.class);
-        assertThat(responseBody.get("accessToken")).isEqualTo("access_token");
+        assertThat(responseBody).containsEntry("accessToken", "access_token");
+        assertThat(responseBody).containsEntry("name", "User");
 
         assertThat(response.getHeader("Set-Cookie")).contains("refresh_token=refresh_token");
 
@@ -152,6 +154,7 @@ class LoginFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_UNAUTHORIZED);
         Map<String, String> responseBody = objectMapper.readValue(response.getContentAsString(), Map.class);
-        assertThat(responseBody.get("code")).isEqualTo("LOGIN_FAILED");
+        assertThat(responseBody).containsEntry("code", "LOGIN_FAILED");
+        assertThat(responseBody).containsEntry("message", "아이디 또는 비밀번호가 올바르지 않습니다.");
     }
 }

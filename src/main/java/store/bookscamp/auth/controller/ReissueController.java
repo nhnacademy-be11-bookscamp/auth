@@ -32,7 +32,7 @@ public class ReissueController {
     private final MemberCredentialRepository memberCredentialRepository;
 
     @PostMapping("/oauth/login")
-    public ResponseEntity<?> oauthLogin(@Valid @RequestBody OauthLoginRequest request, HttpServletRequest httpServletRequest, HttpServletResponse response) {
+    public ResponseEntity<Map<String,String>> oauthLogin(@Valid @RequestBody OauthLoginRequest request, HttpServletRequest httpServletRequest, HttpServletResponse response) {
         String username = request.username();
 
         Member memberInfo = memberCredentialRepository.getByUsername(username).orElseThrow(
@@ -50,9 +50,11 @@ public class ReissueController {
         responseBody.put("accessToken", accessToken);
         responseBody.put("name", memberInfo.getName());
 
-        return ResponseEntity.ok(responseBody);    }
+        return ResponseEntity.ok(responseBody);
+    }
+
     @PostMapping("/reissue")
-    public ResponseEntity<?> reissue(
+    public ResponseEntity<Object> reissue(
             @CookieValue(name = "refresh_token", required = false) String refreshToken,
             HttpServletRequest request,
             HttpServletResponse response) {

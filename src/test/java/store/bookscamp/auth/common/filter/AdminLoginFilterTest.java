@@ -80,6 +80,10 @@ class AdminLoginFilterTest {
         adminLoginFilter.successfulAuthentication(request, response, filterChain, authentication);
 
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+
+        assertThat(response.getHeader("Set-Cookie")).isNotNull();
+        assertThat(response.getHeader("Set-Cookie")).contains("refresh_token=refresh_token");
+
         verify(refreshTokenRepository).save(contains(":100"), eq("refresh_token"), anyLong());
     }
 

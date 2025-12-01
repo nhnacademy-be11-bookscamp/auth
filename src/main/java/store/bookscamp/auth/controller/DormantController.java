@@ -1,8 +1,10 @@
 package store.bookscamp.auth.controller;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -29,16 +31,20 @@ public class DormantController {
     private static final Duration AUTH_CODE_TTL = Duration.ofSeconds(300);
     private static final String REDIS_KEY_PREFIX = "dormant:auth:";
 
+    private static final String MESSAGE_KEY = "message";
+
+    private final Random random = new SecureRandom();
+
     @PostMapping("/send")
     public ResponseEntity<Map<String, Object>> sendDormantCode(@RequestBody Map<String, String> request) {
         String username = request.get("username");
         log.info("1. 요청 진입: {}", username);
 
         if (username == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "사용자 이름이 필요합니다."));
+            return ResponseEntity.badRequest().body(Map.of(MESSAGE_KEY, "사용자 이름이 필요합니다."));
         }
 
-        String randomNumber = String.valueOf((int) (Math.random() * 900000) + 100000);
+        String randomNumber = String.valueOf(random.nextInt(900000) + 100000);
         String redisKey = REDIS_KEY_PREFIX + username;
 
         try {
@@ -48,7 +54,7 @@ public class DormantController {
             log.info("2. 로직 완료, 응답 생성 시작");
 
             Map<String, Object> responseMap = new HashMap<>();
-            responseMap.put("message", "인증번호가 발송되었습니다.");
+            responseMap.put(MESSAGE_KEY, "인증번호가 발송되었습니다.");
             responseMap.put("status", "success");
 
             HttpHeaders headers = new HttpHeaders();
@@ -59,7 +65,7 @@ public class DormantController {
 
         } catch (Exception e) {
             log.error("에러 발생", e);
-            return ResponseEntity.status(500).body(Map.of("message", "서버 에러: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of(MESSAGE_KEY, "서버 에러: " + e.getMessage()));
         }
     }
 
@@ -70,25 +76,25 @@ public class DormantController {
         String code = request.get("code");
 
         if (username == null || code == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "정보가 부족합니다."));
+            return ResponseEntity.badRequest().body(Map.of(MESSAGE_KEY, "정보가 부족합니다."));
         }
 
         String redisKey = REDIS_KEY_PREFIX + username;
         String storedCode = redisTemplate.opsForValue().get(redisKey);
 
         if (storedCode == null) {
-            return ResponseEntity.status(400).body(Map.of("message", "인증번호가 만료되었습니다."));
+            return ResponseEntity.status(400).body(Map.of(MESSAGE_KEY, "인증번호가 만료되었습니다."));
         }
 
         if (!storedCode.equals(code)) {
-            return ResponseEntity.status(400).body(Map.of("message", "인증번호가 일치하지 않습니다."));
+            return ResponseEntity.status(400).body(Map.of(MESSAGE_KEY, "인증번호가 일치하지 않습니다."));
         }
 
         memberLoginService.activateDormantMember(username);
         redisTemplate.delete(redisKey);
 
         Map<String, Object> responseMap = new HashMap<>();
-        responseMap.put("message", "휴면 해제 성공");
+        responseMap.put(MESSAGE_KEY, "휴면 해제 성공");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
